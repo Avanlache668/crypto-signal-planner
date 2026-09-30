@@ -1,18 +1,19 @@
 ---
 name: crypto-signal-planner
-description: Research and rank cryptocurrencies, recommend one non-duplicate candidate, and draft a sourced spot-only entry/exit/risk plan. Use when asked to 推荐一个币、再推荐一个、给币的操作方法, assess a coin such as RENDER, or add paper-only candidate signals to BTC Quant AI; never autonomously trade.
+description: Research and rank cryptocurrencies, recommend one non-duplicate candidate, and draft a sourced spot-only entry/exit/risk plan. Use when asked to 推荐一个币、再推荐一个、给币的操作方法, assess a coin such as RENDER, or connect Gate API for market/account reads and Gate TestNet order tests; never autonomously trade real funds.
 user-invocable: true
 ---
 
 # Crypto Signal Planner (OpenClaw + Codex portable skill)
 
 ## Purpose and boundary
-Produce **a verifiable research candidate and a conditional spot-trading plan**, never a guaranteed winner or an actual fill. This is an instruction skill with deterministic, local Python risk utilities. It neither connects a broker nor submits orders. Use the user's language (default Simplified Chinese). When invoked for a named coin, analyze it; when invoked for “再推荐一个”, avoid previously recommended names if conversation or state is available.
+Produce **a verifiable research candidate and a conditional spot-trading plan**, never a guaranteed winner or an actual fill. This is an instruction skill with deterministic, local Python risk utilities. It can connect Gate API for live read-only data/account access and can submit spot limit orders to Gate TestNet; it does not submit real-money orders. Use the user's language (default Simplified Chinese). When invoked for a named coin, analyze it; when invoked for “再推荐一个”, avoid previously recommended names if conversation or state is available.
 
 ## Read on demand
 - `references/market-evidence.md` for source priority, recency, token/network identity, and rejection criteria.
 - `references/strategy-policy.md` for scoring, entry branches, risk limits, and post-signal tracking.
 - `assets/response-template.md` for the final Chinese report.
+- `references/gate-integration.md` for Gate API modes, credentials, and execution boundaries.
 - `examples/render-case.md` for a **historical illustration only**, never a current quote.
 - Use `{baseDir}/scripts/position_size.py` for deterministic sizing and R:R; `{baseDir}/scripts/validate_plan.py` to check a machine-readable plan when requested.
 
@@ -23,12 +24,13 @@ Produce **a verifiable research candidate and a conditional spot-trading plan**,
 4. **Evidence checks:** price and 24h volume plus historical bars adequate for trend/volatility; spread/depth if available; dated official project developments; token supply and near-term unlocks if first-party/on-chain verified; security/regulatory dependencies; BTC and macro regime. Mark missing fields `unavailable`, never infer numeric values. Prefer two independent current price sources and flag >1% disagreement.
 5. **Screen and rank** using the documented criteria. Do not force a buy candidate. Penalize duplication and portfolio concentration if holdings are known. Distinguish protocol product adoption from token holder value accrual; cite both positive and negative evidence. Don't claim technical patterns, RSI, moving averages, institutional flows, ETF approvals, or token unlock dates without data.
 6. **Calculate the plan, not a forecast:** choose either a pullback setup *or* a breakout setup as the immediately active branch. Identify entry ranges from verified structure/ATR, invalidation/stop, two plausible targets from observed structure, reasoned holding horizon, and precise event conditions. Do not recycle example numbers. Calculate max units using the script. A candidate with no acceptable first-target net R:R (default >=2.0) becomes WATCH, not BUY. Initial default maximum trade risk = 0.5% of modeled equity and single speculative altcoin maximum allocation = 5%; apply stricter caps if user states them. If equity or entry/stop is unknown, express formulas instead of inventing sizes.
-7. **Separate 3 layers:** `research_state` (WATCH/REJECT/CONDITIONAL_WATCH_BUY), `model_signal` (WATCH_BUY/BUY_CANDIDATE/REDUCE_CANDIDATE/NO_ACTION), `execution_state` (NO_ORDER/PAPER_FILL_VERIFIED/REAL_FILL_VERIFIED). Without the relevant verified broker or paper ledger, always `NO_ORDER`, and report fills as `not verified`, not invented zero. Never generate live broker instructions or move assets without explicit user request, necessary credentials, and separate authorization (not provided by this skill).
-8. **Produce user-facing report** using the template: source time, asset identity, 3 evidenced thesis points, countercase, live-data quality, concise table of *conditional* entry/stop/targets, deterministic risk-size example only when inputs exist, invalidation criteria, and status. Include citations or directly accessible source references supported by host tooling. An event-driven alert is only a *proposal* unless actually scheduled or installed.
-9. **Optional machine-readable output:** create JSON using the fields in `examples/hypothetical-plan.json` (replace all hypothetical values) and run `python3 {baseDir}/scripts/validate_plan.py <file>`; fail closed if required evidence or R:R is absent. For a daily monitoring loop, compare latest persisted state with prior confirmed state; only emit changes, never assume a notifier or scheduler exists.
+7. **Gate execution boundary:** `live-readonly` may read public market data and authenticated spot balances, but may only preview orders. `testnet` may submit spot limit orders to the official Gate TestNet host. Never expose or call a real-money order submission path. Read `references/gate-integration.md`.
+8. **Separate 3 layers:** `research_state` (WATCH/REJECT/CONDITIONAL_WATCH_BUY), `model_signal` (WATCH_BUY/BUY_CANDIDATE/REDUCE_CANDIDATE/NO_ACTION), `execution_state` (NO_ORDER/PAPER_FILL_VERIFIED/REAL_FILL_VERIFIED). Without the relevant verified broker or paper ledger, always `NO_ORDER`, and report fills as `not verified`, not invented zero. Never generate live broker instructions or move assets without explicit user request, necessary credentials, and separate authorization (not provided by this skill).
+9. **Produce user-facing report** using the template: source time, asset identity, 3 evidenced thesis points, countercase, live-data quality, concise table of *conditional* entry/stop/targets, deterministic risk-size example only when inputs exist, invalidation criteria, and status. Include citations or directly accessible source references supported by host tooling. An event-driven alert is only a *proposal* unless actually scheduled or installed.
+10. **Optional machine-readable output:** create JSON using the fields in `examples/hypothetical-plan.json` (replace all hypothetical values) and run `python3 {baseDir}/scripts/validate_plan.py <file>`; fail closed if required evidence or R:R is absent. For a daily monitoring loop, compare latest persisted state with prior confirmed state; only emit changes, never assume a notifier or scheduler exists.
 
 ## Hard stops
 - No fresh quote, conflicting symbol/chain, stale candles, unreliable unlock report, exchange restriction, unexplained spread/depth, adverse macro event, or insufficient reward-to-risk: `NO_ACTION / DATA_UNVERIFIED` as applicable.
 - For highly volatile assets and correlated exposures, lower position size instead of implying diversification. No margin, perpetuals, lending, staking, auto-trading, or money transfers are part of this skill.
-- The local Python tools never fetch market data, trade, or contact any external service.
+- Gate helpers may contact Gate for market/account reads; only Gate TestNet may receive an order submission. Live-money trading, withdrawals, transfers, margin, futures, borrowing, and staking remain unavailable.
 - Do not convert historical RENDER prices from prior chats into today's signal.
