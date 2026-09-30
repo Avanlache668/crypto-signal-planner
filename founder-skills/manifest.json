@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "package": "binance-founders-public-methods",
+  "version": "1.0.0",
+  "language": "zh-CN",
+  "researched_at": "2026-10-01",
+  "timezone": "Asia/Shanghai",
+  "repository": "https://github.com/Avanlache668/crypto-signal-planner",
+  "directory": "founder-skills",
+  "method": "Public-source knowledge and workflow distillation; no model weight training; independent and unofficial.",
+  "skills": [
+    {
+      "name": "cz-strategy",
+      "path": "skills/cz-strategy",
+      "interface": {
+        "display_name": "赵长鹏 · 战略与决策分析",
+        "short_description": "提炼赵长鹏公开原则，分析产品取舍、合作条件、长期价值与验证计划",
+        "default_prompt": "使用 $cz-strategy 分析这个加密产品的战略与风险，区分事实和推断，并给出有停止条件的验证计划。"
+      }
+    },
+    {
+      "name": "he-yi-growth",
+      "path": "skills/he-yi-growth",
+      "interface": {
+        "display_name": "何一 · 用户与增长运营",
+        "short_description": "提炼何一公开方法，诊断用户旅程、客服反馈、留存增长与团队培养",
+        "default_prompt": "使用 $he-yi-growth 分析这个加密产品的用户与留存问题，给出客服闭环、增长实验和团队分工。"
+      }
+    }
+  ],
+  "compatibility": {
+    "format": "Agent Skills: name and description YAML frontmatter + Markdown",
+    "codex": {
+      "user": "~/.agents/skills",
+      "project": ".agents/skills"
+    },
+    "openclaw": {
+      "user": "${OPENCLAW_STATE_DIR:-~/.openclaw}/skills",
+      "project": "skills",
+      "profile_override": "Pass --root with the active profile skills directory"
+    }
+  },
+  "official_creator": {
+    "repository": "openai/skills",
+    "commit": "49f948faa9258a0c61caceaf225e179651397431",
+    "path": "skills/.system/skill-creator"
+  },
+  "limitations": [
+    "Public statements are historical source opinions, not independent audits.",
+    "No live order, transfer, secret access or message publication is granted.",
+    "Semantic acceptance cases are manual, not proof of identical model outputs."
+  ]
+}

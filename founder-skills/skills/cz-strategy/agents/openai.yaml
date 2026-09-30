@@ -1,0 +1,4 @@
+interface:
+  display_name: "赵长鹏 · 战略与决策分析"
+  short_description: "提炼赵长鹏公开原则，分析产品取舍、合作条件、长期价值与验证计划"
+  default_prompt: "使用 $cz-strategy 分析这个加密产品的战略与风险，区分事实和推断，并给出有停止条件的验证计划。"

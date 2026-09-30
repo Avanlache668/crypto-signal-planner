@@ -1,0 +1,4 @@
+interface:
+  display_name: "何一 · 用户与增长运营"
+  short_description: "提炼何一公开方法，诊断用户旅程、客服反馈、留存增长与团队培养"
+  default_prompt: "使用 $he-yi-growth 分析这个加密产品的用户与留存问题，给出客服闭环、增长实验和团队分工。"
