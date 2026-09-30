@@ -42,11 +42,22 @@ python3 scripts/gate_client.py testnet-order BTC_USDT buy 0.001 50000
 For a validated plan JSON, `auto_testnet_runner.py` can size and submit a TestNet order:
 
 ```bash
-python3 scripts/auto_testnet_runner.py /path/to/verified-plan.json          # preview
+python3 scripts/auto_testnet_runner.py /path/to/verified-plan.json           # preview
 python3 scripts/auto_testnet_runner.py /path/to/verified-plan.json --execute # TestNet only
 ```
 
 The runner refuses live mode and non-official TestNet hosts.
+
+## Unattended live pre-trade pipeline
+
+If you want the system to run unattended against live **read-only** data, use `live_order_manifest.py`. It validates a verified plan, calculates the bounded spot position size, builds the exact LIMIT-order proposal, and emits a SHA-256 fingerprint for audit/review. It does **not** sign or submit a live write request.
+
+```bash
+python3 scripts/live_order_manifest.py /path/to/verified-plan.json \
+  --output /path/to/order-proposal.json
+```
+
+The resulting manifest is explicitly marked `PROPOSAL_ONLY` and `live_submission_available=false`. This is the closest supported path to unattended live operation: everything through order construction can be automated; real-money execution remains outside this repository.
 
 ## Install directly from GitHub
 
@@ -84,6 +95,7 @@ bash install.sh shared
 | `references/gate-integration.md` | Gate modes, credentials, execution boundaries |
 | `scripts/gate_client.py` | Gate API v4 safe bridge |
 | `scripts/auto_testnet_runner.py` | Validated-plan → Gate TestNet spot LIMIT order |
+| `scripts/live_order_manifest.py` | Validated-plan → deterministic live order proposal/fingerprint; no submission |
 | `scripts/test_gate_client.py` | Offline Gate signing and safety-guard tests |
 | `scripts/position_size.py` | Deterministic spot-long sizing and R:R |
 | `scripts/validate_plan.py` | Candidate-plan validation |
@@ -95,7 +107,9 @@ bash install.sh shared
 - Never paste or commit API secrets.
 - Prefer a dedicated API key with the minimum permissions needed.
 - Use Gate's IP whitelist where practical.
-- Keep real-money trading outside this skill and behind an explicit human confirmation step.
+- Keep real-money trading outside this skill and behind a user-controlled execution step.
 - TestNet success is not evidence of profitability or live execution safety.
+
+Gate API v4 private requests use `KEY`, `Timestamp`, and an HMAC-SHA512 `SIGN`; Gate states that the timestamp gap cannot exceed 60 seconds and supports per-key permission groups and IP whitelists. See the official Gate API v4 documentation.
 
 This is analytical and testing tooling, not personalized investment advice. Cryptocurrency can lose substantial value.
