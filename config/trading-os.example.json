@@ -1,0 +1,15 @@
+{
+  "schema_version": "2.0",
+  "mode": "RESEARCH",
+  "database": "trading-os.db",
+  "policy_version": "offline-v1",
+  "fixture": "fixtures/synthetic_btc_usd.csv",
+  "real_money_autosubmit": false,
+  "paper": {
+    "base_currency": "USD",
+    "starting_cash": "100000",
+    "fee_rate": "0.001",
+    "slippage_bps": "2",
+    "max_depth_fraction": "0.10"
+  }
+}
