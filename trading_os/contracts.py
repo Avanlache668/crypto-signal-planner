@@ -443,4 +443,3 @@ class EventEnvelope:
     previous_hash: str | None = None
     content_hash: str | None = None
     schema_version: str = SCHEMA_VERSION
-

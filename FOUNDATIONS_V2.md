@@ -1,7 +1,7 @@
 # Crypto Autonomous Trading OS — FOUNDATIONS V2
 
-版本：2.0 设计提案 · 日期：2026-10-01（Asia/Shanghai）  
-状态：供架构评审的规范；不是已实现功能、收益承诺或实盘授权。  
+版本：2.0 设计提案 · 日期：2026-10-01（Asia/Shanghai）
+状态：供架构评审的规范；不是已实现功能、收益承诺或实盘授权。
 基线：`Avanlache668/crypto-signal-planner`，commit `6845f8e7e72db7a8bbf62524be0de6a7f5763a5b`。
 
 本文独立定义正确抽象，再给出兼容迁移路径。当前交付仅新增本文，不修改脚本、Skill、安装方式、CI 或现有参数。下文 MUST 表示未来实现必须满足；SHOULD 表示有记录理由才可偏离；候选研究项不等于生产能力。

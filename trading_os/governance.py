@@ -51,4 +51,3 @@ def validate_parameter_update(layer: str, changes: Mapping[str, object]) -> None
     protected = {"live_write_enabled", "daily_loss_limit", "weekly_loss_limit", "drawdown_limit", "capabilities", "mode"}
     if layer == "LEARNED" and protected.intersection(changes):
         raise CapabilityDenied("learned parameters cannot modify safety or operator policy")
-

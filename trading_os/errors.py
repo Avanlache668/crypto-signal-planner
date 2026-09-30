@@ -20,4 +20,3 @@ class StaleData(ValidationError):
 
 class DuplicateEvent(TradingOSError):
     pass
-

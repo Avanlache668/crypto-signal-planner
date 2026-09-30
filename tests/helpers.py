@@ -10,4 +10,3 @@ def event(event_id: str, event_type: str, aggregate_version: int, payload=None, 
         event_id, event_type, "test", aggregate_id, aggregate_version, 0, "run", mode, epoch,
         NOW, NOW, NOW, aggregate_version, "tests", event_id, "policy-v1", payload or {},
     )
-

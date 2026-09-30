@@ -41,4 +41,3 @@ def alpha_performance(alpha_id: str, returns: Sequence[Decimal], costs: Sequence
     return {"alpha_id":alpha_id, "sample_count":n, "effective_sample_count":str(Decimal(n)), "status":"EVALUATED",
             "cost_adjusted_return":str(mean), "confidence_interval":[str(mean-error),str(mean+error)],
             "weight_update":"PROPOSAL_ONLY"}
-

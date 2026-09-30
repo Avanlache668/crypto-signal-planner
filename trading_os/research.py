@@ -118,4 +118,3 @@ def compile_intent(target: TargetPortfolio, instrument: InstrumentId, equity: De
     weight = target.weights.get(instrument.base.canonical, Decimal("0"))
     target_quantity = equity * weight / price
     return TradeIntent("intent:" + target.target_id, instrument, target_quantity, current_quantity, price, now + timedelta(minutes=15), target.signal_refs, mode, epoch, policy_version)
-

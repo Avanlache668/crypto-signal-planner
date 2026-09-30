@@ -117,4 +117,3 @@ def order_reducer(state: OrderState, event_type: str, payload: Mapping[str, obje
         reconciliation = "DISPUTED" if state.status == "CANCELLED" else "CONFIRMED"
         return OrderState(status, new_qty, state.seen_fills | {fill_id}, reconciliation)
     return state
-

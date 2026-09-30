@@ -56,4 +56,3 @@ def ledger_reducer(state: LedgerState, event: EventEnvelope) -> LedgerState:
         return LedgerState(_add(state.balances, asset, amount), state.fees, state.external_flows,
                            state.processed_fills, state.corrections + (event.event_id,))
     return state
-
