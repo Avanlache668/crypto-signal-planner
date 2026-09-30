@@ -1,60 +1,84 @@
-# Crypto Signal Planner 双平台安装说明
+# Crypto Signal Planner 安装与 Gate API 联调说明
 
-仓库根目录的 `SKILL.md` 可以直接被 OpenClaw 从 GitHub 安装，也可以复制到 Codex 默认 Skills 目录。
-
-## 1. GitHub 公开仓库发布后：OpenClaw
-
-已填写连接的 GitHub 用户名：
-
-```bash
-openclaw skills install git:Avanlache668/crypto-signal-planner@main
-openclaw skills info crypto-signal-planner
-openclaw skills check
-```
-
-默认安装到活动 OpenClaw 工作区。若通过远程 Gateway 使用，确保安装到正确的 Gateway/Agent。
-
-## 2. Codex
+## 1. 安装 Skill
 
 ```bash
 git clone https://github.com/Avanlache668/crypto-signal-planner.git
 cd crypto-signal-planner
-bash install.sh codex
-python3 scripts/smoke_test.py
-```
-
-重新启动或刷新 Codex 会话，使用 `$crypto-signal-planner` 显式调用。
-
-## 3. 同一台本地机器同时安装
-
-```bash
 bash install.sh shared
 ```
 
-默认位置：`~/.agents/skills/crypto-signal-planner`。OpenClaw 仅在默认本地状态下兼容该路径；自定义状态、远程 Gateway 要单独安装：
+仅 Codex：
 
 ```bash
-bash install.sh openclaw        # 到 ~/.openclaw/skills/ 或 OPENCLAW_STATE_DIR/skills/
-OPENCLAW_WORKSPACE=/path/to/workspace bash install.sh openclaw-workspace
+bash install.sh codex
 ```
 
-安装器不会覆盖已有同名 Skill。安装完成后运行 `openclaw skills info crypto-signal-planner` 验证实际 Gateway 可见状态。
-
-## 4. 调用案例
-
-OpenClaw：`/crypto-signal-planner 再推荐一个币，避开 SOL、SUI、LINK、AAVE、ONDO 和 RENDER；不满足验证就 NO_ACTION。`
-
-Codex：`$crypto-signal-planner 分析 RENDER 当前行情，并计算包含费用和滑点的单笔仓位风险。`
-
-## 5. 离线自检
+仅 OpenClaw：
 
 ```bash
-python3 scripts/smoke_test.py
-python3 scripts/validate_plan.py examples/hypothetical-plan.json --allow-fixture
+bash install.sh openclaw
 ```
 
-`PASS` 只证明本地计算与规则自检；不代表连通实时行情、完成回测或已真实下单。没有行情来源时，Skill 应只做研究，不提供执行信号。
+## 2. Gate API 配置
 
-## 6. 从本地副本发布
+不要把 API Key/Secret 发到聊天、提交到 GitHub 或写入示例文件。
 
-参见 `PUBLISH.md`。发布需你自己的 GitHub 登录授权。公共可见性不等于开源授权；本仓库尚未设定 LICENSE。
+```bash
+cp .env.example .env
+```
+
+推荐先使用：
+
+```bash
+export GATE_MODE=live-readonly
+export GATE_API_KEY='你的本地Key'
+export GATE_API_SECRET='你的本地Secret'
+```
+
+`live-readonly` 只允许：行情读取、现货账户读取、订单预览；真实资金下单路径被代码硬性阻断。
+
+## 3. 测试行情和账户读取
+
+```bash
+python3 scripts/gate_client.py ticker BTC_USDT
+python3 scripts/gate_client.py balances --currency USDT
+```
+
+## 4. 订单预览
+
+```bash
+python3 scripts/gate_client.py preview BTC_USDT buy 0.001 50000
+```
+
+只生成订单 JSON，不提交。
+
+## 5. Gate TestNet 自动下单
+
+为 TestNet 创建单独的 API 凭证，然后：
+
+```bash
+export GATE_MODE=testnet
+export GATE_HOST=https://api-testnet.gateapi.io
+export GATE_API_KEY='TestNet Key'
+export GATE_API_SECRET='TestNet Secret'
+
+python3 scripts/gate_client.py testnet-order BTC_USDT buy 0.001 50000
+```
+
+或者使用经过 `validate_plan.py` 验证的计划：
+
+```bash
+python3 scripts/auto_testnet_runner.py verified-plan.json
+python3 scripts/auto_testnet_runner.py verified-plan.json --execute
+```
+
+第二条命令只会提交到官方 Gate TestNet。若 `GATE_MODE` 不是 `testnet`，程序直接拒绝。
+
+## 6. 安全建议
+
+- API Key 使用最小权限。
+- 能设置 IP 白名单时启用。
+- 不开启提现/转账权限。
+- 不把真实资金交易交给无人值守代理。
+- TestNet 下单成功不代表策略有收益能力。

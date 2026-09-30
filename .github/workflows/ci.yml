@@ -10,7 +10,9 @@ jobs:
           python-version: '3.12'
       - name: Compile helpers
         run: python -m compileall -q scripts
-      - name: Offline regressions
+      - name: Core regressions
         run: python3 scripts/smoke_test.py
+      - name: Gate bridge regressions
+        run: python3 scripts/test_gate_client.py
       - name: Fixture validator
         run: python3 scripts/validate_plan.py examples/hypothetical-plan.json --allow-fixture

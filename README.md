@@ -1,22 +1,62 @@
 # Crypto Signal Planner
 
-A **portable OpenClaw / Codex Agent Skill** for researched cryptocurrency candidate selection and *conditional spot-only trading plans*. It checks for duplicate recommendations, current quotes, exact coin/network identity, documented catalysts, token-supply risk, and risk-adjusted trade sizing. RENDER is a **historical illustration**, not a live recommendation.
+A **portable OpenClaw / Codex Agent Skill** for researched cryptocurrency candidate selection, conditional spot-trading plans, and a guarded Gate API bridge.
 
-> **No autonomous trading.** The skill does not fetch market data by itself, connect an exchange, submit orders, guarantee returns, or claim simulated/real fills. A host agent needs its own approved web or market data tools. If data cannot be verified, the skill returns `NO_ACTION`.
+> **Real-money autonomous trading is intentionally blocked.** The Gate integration supports live public/private **read-only** access plus order previews, and actual spot LIMIT order submission **only on Gate TestNet**. It does not expose live-money order, withdrawal, transfer, margin, futures, borrowing, or staking actions.
+
+## Gate API modes
+
+Gate API v4 separates live and TestNet endpoints. This repository uses two modes:
+
+- `GATE_MODE=live-readonly`: ticker reads, authenticated spot-account reads, and order previews.
+- `GATE_MODE=testnet`: the above plus spot LIMIT orders to the official TestNet host.
+
+Copy the environment template locally and never commit credentials:
+
+```bash
+cp .env.example .env
+# export values from your local secret manager or shell; do not commit .env
+```
+
+Examples:
+
+```bash
+# Public ticker (no credentials required)
+python3 scripts/gate_client.py ticker BTC_USDT
+
+# Private spot balances (requires API key/secret; live-readonly is fine)
+export GATE_MODE=live-readonly
+export GATE_API_KEY='...'
+export GATE_API_SECRET='...'
+python3 scripts/gate_client.py balances --currency USDT
+
+# Preview only: never submits anything
+python3 scripts/gate_client.py preview BTC_USDT buy 0.001 50000
+
+# TestNet only: actual TestNet LIMIT order
+export GATE_MODE=testnet
+export GATE_HOST=https://api-testnet.gateapi.io
+python3 scripts/gate_client.py testnet-order BTC_USDT buy 0.001 50000
+```
+
+For a validated plan JSON, `auto_testnet_runner.py` can size and submit a TestNet order:
+
+```bash
+python3 scripts/auto_testnet_runner.py /path/to/verified-plan.json          # preview
+python3 scripts/auto_testnet_runner.py /path/to/verified-plan.json --execute # TestNet only
+```
+
+The runner refuses live mode and non-official TestNet hosts.
 
 ## Install directly from GitHub
 
 ### OpenClaw
-
-Git-install when this repository is published (for the connected GitHub account):
 
 ```bash
 openclaw skills install git:Avanlache668/crypto-signal-planner@main
 openclaw skills info crypto-signal-planner
 openclaw skills check
 ```
-
-OpenClaw Git installation requires `SKILL.md` at the repository root, as provided here. For remote Gateways, run against the intended agent/Gateway. [OpenClaw skills docs](https://docs.openclaw.ai/cli/skills).
 
 ### Codex
 
@@ -25,9 +65,8 @@ git clone https://github.com/Avanlache668/crypto-signal-planner.git
 cd crypto-signal-planner
 bash install.sh codex
 python3 scripts/smoke_test.py
+python3 scripts/test_gate_client.py
 ```
-
-Default target: `~/.agents/skills/crypto-signal-planner`. Restart the Codex session if needed; then use `$crypto-signal-planner` or `/skills`.
 
 ### Same local machine, both systems
 
@@ -35,51 +74,28 @@ Default target: `~/.agents/skills/crypto-signal-planner`. Restart the Codex sess
 bash install.sh shared
 ```
 
-OpenClaw uses `~/.agents/skills` **only with its default local state**. For a custom or remote OpenClaw Gateway, install separately into the actual agent's workspace:
-
-```bash
-OPENCLAW_WORKSPACE=/path/to/your/agent/workspace bash install.sh openclaw-workspace
-```
-
-The installer refuses to overwrite an existing skill installation and copies only required skill files. See [中文安装说明](INSTALL.zh-CN.md).
-
 ## Contents
 
 | File | Purpose |
 |---|---|
 | `SKILL.md` | Main portable skill instructions |
 | `references/market-evidence.md` | Quote freshness, source and identity checks |
-| `references/strategy-policy.md` | Ranking, two entry branches and risk rules |
-| `assets/response-template.md` | Chinese report template |
-| `scripts/position_size.py` | Deterministic spot-long sizing and first-target after-cost risk/reward |
-| `scripts/validate_plan.py` | Structural validation and source timestamp checks; **cannot authenticate source claims** |
-| `scripts/smoke_test.py` | Offline regression tests |
-| `examples/` | Hypothetical and historical examples |
-| `install.sh` | Safe local installer |
-| `publish_github.sh` | Owner-run one-time public publishing helper |
+| `references/strategy-policy.md` | Ranking and risk rules |
+| `references/gate-integration.md` | Gate modes, credentials, execution boundaries |
+| `scripts/gate_client.py` | Gate API v4 safe bridge |
+| `scripts/auto_testnet_runner.py` | Validated-plan → Gate TestNet spot LIMIT order |
+| `scripts/test_gate_client.py` | Offline Gate signing and safety-guard tests |
+| `scripts/position_size.py` | Deterministic spot-long sizing and R:R |
+| `scripts/validate_plan.py` | Candidate-plan validation |
+| `.env.example` | Non-secret Gate configuration template |
+| `.github/workflows/ci.yml` | Offline regression checks |
 
-## Offline validation
+## Security rules
 
-Python 3.9+; no packages or API keys required:
+- Never paste or commit API secrets.
+- Prefer a dedicated API key with the minimum permissions needed.
+- Use Gate's IP whitelist where practical.
+- Keep real-money trading outside this skill and behind an explicit human confirmation step.
+- TestNet success is not evidence of profitability or live execution safety.
 
-```bash
-python3 scripts/smoke_test.py
-python3 scripts/position_size.py \
-  --equity 100000 --entry 10 --stop 9 --target 12.3 \
-  --risk-pct 0.005 --allocation-pct 0.05
-python3 scripts/validate_plan.py examples/hypothetical-plan.json --allow-fixture
-```
-
-`--allow-fixture` is **only** for offline example checks. PASS is not a backtest, live quote verification, profitable strategy proof, order, or simulated fill.
-
-## Invoke
-
-**OpenClaw:** `/crypto-signal-planner 推荐一个没有重复的现货币种，核验行情并给条件交易计划`
-
-**Codex:** `$crypto-signal-planner Research a new spot crypto candidate with two verified quote sources; calculate after-cost sizing or return NO_ACTION.`
-
-## Publishing and license
-
-To create a **new public** GitHub repository from an extracted copy, see [publishing instructions](PUBLISH.md). **This repository currently does not grant a reuse or redistribution license**; being public on GitHub is not equivalent to open-source licensing. The owner may add a LICENSE later.
-
-This is analytical tooling, not personalized investment advice. Stop orders may experience slippage, and cryptocurrency can lose substantial value.
+This is analytical and testing tooling, not personalized investment advice. Cryptocurrency can lose substantial value.
