@@ -45,5 +45,10 @@ class EventStoreTests(unittest.TestCase):
         self.store.connection.execute("UPDATE snapshots SET state='{}'")
         with self.assertRaises(Exception): self.store.load_snapshot("x", "a")
 
+    def test_replay_rejects_tampered_event_chain(self):
+        self.store.append(event("e1", "EXTERNAL_FLOW_RECORDED", 1, {"asset":"USD","amount":"1"}), 0)
+        self.store.connection.execute("UPDATE events SET payload='{}' WHERE event_id='e1'")
+        with self.assertRaises(Exception): self.store.replay(ledger_reducer, LedgerState())
+
 
 if __name__ == "__main__": unittest.main()

@@ -15,7 +15,8 @@ T = TypeVar("T")
 
 
 class SQLiteEventStore:
-    def __init__(self, path: str = ":memory:") -> None:
+    def __init__(self, path: str = ":memory:", clock=None) -> None:
+        self.clock = clock or (lambda: datetime.now(timezone.utc))
         self.connection = sqlite3.connect(path, isolation_level=None)
         self.connection.row_factory = sqlite3.Row
         self.connection.execute("PRAGMA foreign_keys=ON")
@@ -65,7 +66,7 @@ class SQLiteEventStore:
                 raise ConcurrencyError(f"expected version {expected_version}, got {actual_version}")
             if event.aggregate_version != expected_version + 1:
                 raise ValidationError("aggregate_version must increment by one")
-            now = datetime.now(timezone.utc)
+            now = self.clock()
             unsigned = replace(event, stream_sequence=0, recorded_at=now, previous_hash=previous_hash, content_hash=None)
             digest = content_hash({"event": unsigned, "previous_hash": previous_hash})
             try:
@@ -94,7 +95,7 @@ class SQLiteEventStore:
             with self.connection:
                 self.connection.execute(
                     "INSERT INTO inbox(source,message_id,received_at) VALUES(?,?,?)",
-                    (source, message_id, datetime.now(timezone.utc).isoformat()),
+                    (source, message_id, self.clock().isoformat()),
                 )
             return True
         except sqlite3.IntegrityError:
@@ -128,10 +129,23 @@ class SQLiteEventStore:
         )
 
     def replay(self, reducer: Callable[[T, EventEnvelope], T], initial: T, *, aggregate_type: str | None = None, aggregate_id: str | None = None) -> T:
+        self.verify_integrity()
         state = initial
         for event in self.load(aggregate_type, aggregate_id):
             state = reducer(state, event)
         return state
+
+    def verify_integrity(self) -> None:
+        previous_by_aggregate: dict[tuple[str, str], str | None] = {}
+        for event in self.load():
+            key = (event.aggregate_type, event.aggregate_id)
+            expected_previous = previous_by_aggregate.get(key)
+            if event.previous_hash != expected_previous:
+                raise ValidationError(f"event hash chain broken at {event.event_id}")
+            unsigned = replace(event, stream_sequence=0, content_hash=None)
+            if content_hash({"event": unsigned, "previous_hash": expected_previous}) != event.content_hash:
+                raise ValidationError(f"event content hash mismatch at {event.event_id}")
+            previous_by_aggregate[key] = event.content_hash
 
     def save_snapshot(self, aggregate_type: str, aggregate_id: str, version: int, sequence: int, reducer_version: str, state: Any) -> None:
         encoded = canonical_json(state)
@@ -160,4 +174,3 @@ class SQLiteEventStore:
             raise ValidationError("invalid outbox status")
         with self.connection:
             self.connection.execute("UPDATE outbox SET status=?,attempts=attempts+1,last_error=? WHERE outbox_id=?", (status, error, outbox_id))
-

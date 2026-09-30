@@ -27,7 +27,8 @@ class RiskSnapshot:
 
 
 class RiskGovernor:
-    def __init__(self, path: str = ":memory:") -> None:
+    def __init__(self, path: str = ":memory:", clock=None) -> None:
+        self.clock = clock or (lambda: datetime.now(timezone.utc))
         self.connection = sqlite3.connect(path, isolation_level=None, timeout=10)
         self.connection.row_factory = sqlite3.Row
         self.connection.executescript("""
@@ -130,7 +131,7 @@ class RiskGovernor:
     def trigger_kill(self, reason: str) -> None:
         if not reason: raise ValidationError("kill reason required")
         with self.connection:
-            self.connection.execute("UPDATE risk_control SET killed=1,reason=?,triggered_at=?,recovery_authorization=NULL WHERE singleton=1", (reason,datetime.now(timezone.utc).isoformat()))
+            self.connection.execute("UPDATE risk_control SET killed=1,reason=?,triggered_at=?,recovery_authorization=NULL WHERE singleton=1", (reason,self.clock().isoformat()))
 
     def recover(self, authorization: str, *, reconciled: bool, cause_fixed: bool) -> None:
         if not authorization or not reconciled or not cause_fixed:
