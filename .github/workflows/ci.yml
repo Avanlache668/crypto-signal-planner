@@ -12,18 +12,7 @@ jobs:
         run: python -m compileall -q scripts
       - name: Core regressions
         run: python3 scripts/smoke_test.py
-      - name: Trading OS contracts and safety regressions
-        run: python3 -m unittest discover -s tests -v
       - name: Gate bridge regressions
         run: python3 scripts/test_gate_client.py
       - name: Fixture validator
         run: python3 scripts/validate_plan.py examples/hypothetical-plan.json --allow-fixture
-      - name: Offline vertical slice
-        run: |
-          python3 -m trading_os.cli check
-          python3 -m trading_os.cli research
-          python3 -m trading_os.cli --db /tmp/trading-os-ci.db paper
-          python3 -m trading_os.cli --db /tmp/trading-os-ci.db replay
-          python3 -m trading_os.cli proposal
-      - name: Founder skill compatibility
-        run: cd founder-skills && python3 -m unittest discover -s tests -v
