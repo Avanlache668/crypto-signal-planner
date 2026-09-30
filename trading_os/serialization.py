@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, is_dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 from enum import Enum
 import hashlib
@@ -16,6 +16,8 @@ def primitive(value: Any) -> Any:
         return str(value)
     if isinstance(value, datetime):
         return value.isoformat()
+    if isinstance(value, timedelta):
+        return value.total_seconds()
     if isinstance(value, Enum):
         return value.value
     if isinstance(value, dict):
@@ -31,4 +33,3 @@ def canonical_json(value: Any) -> str:
 
 def content_hash(value: Any) -> str:
     return hashlib.sha256(canonical_json(value).encode("utf-8")).hexdigest()
-

@@ -2,6 +2,8 @@
 
 A **portable OpenClaw / Codex Agent Skill** for researched cryptocurrency candidate selection, conditional spot-trading plans, and a guarded Gate API bridge.
 
+It also contains the **Crypto Autonomous Trading OS V2 foundation**: an offline-first, deterministic modular monolith for market knowledge, regime/alpha research, risk budgets, portfolio intents, bounded paper execution, append-only accounting, attribution and governance. Synthetic demonstrations are system tests, not profitability claims.
+
 > **Real-money autonomous trading is intentionally blocked.** The Gate integration supports live public/private **read-only** access plus order previews, and actual spot LIMIT order submission **only on Gate TestNet**. It does not expose live-money order, withdrawal, transfer, margin, futures, borrowing, or staking actions.
 
 ## Gate API modes
@@ -101,6 +103,36 @@ bash install.sh shared
 | `scripts/validate_plan.py` | Candidate-plan validation |
 | `.env.example` | Non-secret Gate configuration template |
 | `.github/workflows/ci.yml` | Offline regression checks |
+
+## Trading OS V2 quick start
+
+Python 3.11+ is sufficient; the offline core has no third-party runtime dependency.
+
+```bash
+python3 -m trading_os.cli check
+python3 -m trading_os.cli capabilities
+python3 -m trading_os.cli research
+python3 -m trading_os.cli --db /tmp/trading-os.db paper
+python3 -m trading_os.cli --db /tmp/trading-os.db replay
+python3 -m trading_os.cli --db /tmp/trading-os.db status
+python3 -m trading_os.cli proposal
+python3 -m trading_os.cli report
+```
+
+`research` and `paper` use `fixtures/synthetic_btc_usd.csv`, which is explicitly synthetic. `proposal` creates an unsigned `PROPOSAL_ONLY` payload and never sends it. All commands work without API keys. To use another offline fixture, pass `--fixture path.csv` after the command.
+
+Run every offline check:
+
+```bash
+python3 -m compileall -q trading_os scripts
+python3 -m unittest discover -s tests -v
+python3 scripts/smoke_test.py
+python3 scripts/test_gate_client.py
+python3 scripts/validate_plan.py examples/hypothetical-plan.json --allow-fixture
+(cd founder-skills && python3 -m unittest discover -s tests -v)
+```
+
+Architecture decisions and current scope are documented in [`docs/architecture/ADR-001-safety-and-modular-monolith.md`](docs/architecture/ADR-001-safety-and-modular-monolith.md), [`docs/IMPLEMENTATION_STATUS.md`](docs/IMPLEMENTATION_STATUS.md), [`docs/MIGRATION.md`](docs/MIGRATION.md), and [`docs/RECOVERY.md`](docs/RECOVERY.md). Non-secret defaults are in [`config/trading-os.example.json`](config/trading-os.example.json).
 
 ## Security rules
 

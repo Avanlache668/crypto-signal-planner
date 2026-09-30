@@ -38,6 +38,14 @@ class ContractTests(unittest.TestCase):
         with self.assertRaises(ValidationError):
             DerivedState("sma", Decimal("100"), "USDT", NOW, NOW, ("transform:v1",))
 
+    def test_stale_quote_and_orderbook_gap_block_execution_requirements(self):
+        price = ObservedState("price", "100", "USDT", NOW - timedelta(minutes=10), NOW - timedelta(minutes=5), ("feed:1",))
+        state = MarketState("s", NOW - timedelta(minutes=10), NOW, self.instrument, (price,), "hash")
+        requirement = DataRequirement(frozenset({"price", "orderbook_sequence_contiguous"}), timedelta(minutes=2), timedelta(seconds=2), frozenset({KnowledgeType.OBSERVED}))
+        errors = requirement.validate(state, NOW)
+        self.assertIn("stale:price", errors)
+        self.assertIn("missing:orderbook_sequence_contiguous", errors)
+
 
 if __name__ == "__main__":
     unittest.main()
