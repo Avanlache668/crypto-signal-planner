@@ -16,6 +16,7 @@ For a long spot scenario with entry E, stop S < E, capital C, max trade risk r a
 - Realistically include fees, slippage and gap risk; a trigger/stop is not guaranteed fill. Use `{baseDir}/scripts/position_size.py` to calculate both price-only and fee-adjusted risk/reward and cap size. Default r=0.005 and a=0.05 when not otherwise specified. For large volatility, choose a lower limit.
 - Default first target net reward/risk >=2; if not, wait, improve entry, or reject. Do not overfit target simply to reach 2R.
 - STOP is a planned risk exit, not guaranteed protection in gaps/illiquid markets.
+- **ATR tier notional cap (rule v2.1 (9), 2026-10-15)**: cap notional per position by ATR14 — `>8% -> 2.5% of equity`, `5-8% -> 3.75%`, `<=5% -> 5%` (on $10k equity = $250 / $375 / $500). Rationale: on high-ATR names the observed gap MAE (-9% to -13%) dwarfs the planned 5-6% risk, so a wider stop only loses more slowly. Enforce with `position_size.py --atr-pct <ATR14 %>` (add `--atr-cap-mode clamp` to shrink size automatically); size at or below the cap, or skip the trade.
 
 ## Risk state and macro overlay
 Caution or block newly proposed risk on BTC sell-off, extreme altcoin funding/OI spikes, unlock uncertainty, widened spreads, major policy event, abnormal USD/yields/risk-off, or data degradation. Do not turn speculative comments about macro into numeric thresholds without source-backed levels.

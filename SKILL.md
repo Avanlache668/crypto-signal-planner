@@ -16,6 +16,7 @@ Produce **a verifiable research candidate and a conditional spot-trading plan**,
 - `references/gate-integration.md` for Gate API modes, credentials, and execution boundaries.
 - `examples/render-case.md` for a **historical illustration only**, never a current quote.
 - Use `{baseDir}/scripts/position_size.py` for deterministic sizing and R:R; `{baseDir}/scripts/validate_plan.py` to check a machine-readable plan when requested.
+- Sizing gates: `--atr <ATR price>` enforces stop distance >=1.2xATR (rule v2); `--atr-pct <ATR14 %>` enforces the ATR tier notional cap (rule v2.1 (9)): ATR>8% -> 2.5% of equity, 5-8% -> 3.75%, <=5% -> 5% (=$250/$375/$500 on $10k), `--atr-cap-mode clamp` shrinks size instead of only flagging. `validate_plan.py` applies both when the plan JSON carries `atr` / `atr_pct`. Omitting these flags leaves output byte-identical to the legacy sizing.
 
 ## Operating procedure
 1. **Parse user intent.** Identify `recommend_new` or `analyze_symbol`, available risk budget, time horizon, spot-only default, jurisdiction/exchange if explicitly known, and exclusions. Use recent conversation and, if accessible, a persistent candidate history. Previously discussed SOL, SUI, LINK, AAVE, ONDO, and RENDER are *example exclusions only* when relevant; never claim they are the user's live holdings.

@@ -46,11 +46,23 @@ def validate(p, allow_fixture=False, now=None):
             errors.append('quote disagreement >1% or invalid quote')
         if abs(D(p['entry']) - q)/q > D('0.5'):
             errors.append('entry >50% away from current quote; needs manual review')
+        kw = {'side': p.get('side','long')}
+        if p.get('atr_pct') is not None:      # 规则 v2.1 ⑨（可选字段）
+            kw['atr_pct'] = p['atr_pct']
+        if p.get('atr') is not None:          # 规则 v2 ②（可选字段，价格口径）
+            kw['atr'] = p['atr']
         r = calculate(p['equity'],p['entry'],p['stop'],p['first_target'],p['risk_pct'],
-                      p['allocation_pct'],p['fee_pct_per_side'],p['slippage_pct_per_side'])
+                      p['allocation_pct'],p['fee_pct_per_side'],p['slippage_pct_per_side'], **kw)
+        if p.get('atr_pct') is not None and not r.get('atr_tier_ok', True):
+            errors.append('rule v2.1 (9): notional above ATR tier cap; ' + str(r.get('atr_tier_message')))
+        if p.get('atr') is not None and not r.get('stop_atr_ok', True):
+            errors.append('rule v2 (2): stop closer than min ATR multiple; ' + str(r.get('stop_atr_message')))
         if not r['first_target_meets_2r']:
             errors.append('first target net risk/reward below 2')
-        if D(p['second_target']) <= D(p['first_target']):
+        if str(p.get('side','long')).lower() == 'short':
+            if D(p['second_target']) >= D(p['first_target']):
+                errors.append('short: second target must be below first')
+        elif D(p['second_target']) <= D(p['first_target']):
             errors.append('second target must exceed first')
     except (ValueError, ArithmeticError, TypeError) as ex:
         errors.append('invalid price/risk inputs: ' + str(ex))
