@@ -55,8 +55,19 @@ def validate(p, allow_fixture=False, now=None):
                       p['allocation_pct'],p['fee_pct_per_side'],p['slippage_pct_per_side'], **kw)
         if p.get('atr_pct') is not None and not r.get('atr_tier_ok', True):
             errors.append('rule v2.1 (9): notional above ATR tier cap; ' + str(r.get('atr_tier_message')))
+        if p.get('atr_pct') is not None:   # 规则 v3.0 P0：ATR 带宽 + 止损下限
+            if not r.get('atr_band_ok', True):
+                errors.append('rule v3.0 P0-a: ' + str(r.get('atr_band_message')))
+            if not r.get('stop_atr_pct_ok', True):
+                errors.append('rule v3.0 P0-b: ' + str(r.get('stop_atr_pct_message')))
         if p.get('atr') is not None and not r.get('stop_atr_ok', True):
             errors.append('rule v2 (2): stop closer than min ATR multiple; ' + str(r.get('stop_atr_message')))
+        if p.get('liquidity_usd_24h') is not None:
+            try:
+                if D(p['liquidity_usd_24h']) < D('5000000'):
+                    errors.append('rule v3.0 P0-c: 24h 成交额 < $5M，深度不足（滑点假设 0.1%/边 不再成立）')
+            except (ValueError, ArithmeticError, TypeError):
+                errors.append('liquidity_usd_24h invalid')
         if not r['first_target_meets_2r']:
             errors.append('first target net risk/reward below 2')
         if str(p.get('side','long')).lower() == 'short':

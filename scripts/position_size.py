@@ -14,10 +14,20 @@ def D(x):
 ATR_TIERS = ((D('8'), D('0.025')), (D('5'), D('0.0375')), (D('0'), D('0.05')))
 
 
+# 规则 v3.0 P0（2026-10-18）：标的池 ATR 带宽 + 止损下限硬化。
+# 台账依据（34 笔，25 笔已平仓）：ATR<5% 的 6 笔全止损（净 -6.00R，均 -1.00R）；
+# 止损/ATR<0.8 的 11 笔净 -3.79R，>=1.0 的 4 笔仅 -0.42R。
+ATR_BAND = (D('6'), D('13'))
+STOP_MIN_ATR_RATIO = D('1.2')
+STOP_MAX_PCT = D('12')
+MIN_LIQUIDITY_USD = D('5000000')
+
+
 def calculate(equity, entry, stop, target, risk_pct=D('0.005'), allocation_pct=D('0.05'),
               fee_pct=D('0.001'), slippage_pct=D('0.001'), qty_step=D('0.00000001'),
               atr=None, stop_min_atr=D('1.2'), side='long',
-              atr_pct=None, atr_cap_mode='reject', atr_tier_equity=None):
+              atr_pct=None, atr_cap_mode='reject', atr_tier_equity=None,
+              atr_band=None):
     C, E, S, T = map(D, (equity, entry, stop, target))
     r, a, fee, slip, step = map(D, (risk_pct, allocation_pct, fee_pct, slippage_pct, qty_step))
     short = str(side).lower() == 'short'
@@ -84,6 +94,12 @@ def calculate(equity, entry, stop, target, risk_pct=D('0.005'), allocation_pct=D
         out.update(atr_pct=f(D(atr_pct)), atr_tier_pct=tier['tier_pct'],
                    atr_tier_cap_amount=tier['cap_amount'], atr_tier_notional=tier['notional'],
                    atr_tier_ok=tier['ok'], atr_tier_message=tier['message'])
+        band = check_atr_band(atr_pct, atr_band or ATR_BAND)
+        out.update(atr_band_ok=band['ok'], atr_band_message=band['message'])
+        sgate = check_stop_atr_pct(E, S, atr_pct, side=('short' if short else 'long'))
+        out.update(stop_atr_pct_ratio=sgate['stop_atr_ratio'],
+                   stop_distance_pct=sgate['stop_distance_pct'],
+                   stop_atr_pct_ok=sgate['ok'], stop_atr_pct_message=sgate['message'])
     return out
 
 
@@ -131,6 +147,50 @@ def check_stop_atr(entry, stop, atr, min_ratio=D('1.2'), side='long'):
                 min_ratio=f(m), ok=bool(ok),
                 message=('ok' if ok else f'REJECT: 止损仅 {float(ratio):.2f}xATR (< {float(m):.2f}xATR)，'
                          '需放宽止损并据此减仓，或放弃该笔'))
+
+
+
+def check_atr_band(atr_pct, band=ATR_BAND):
+    """规则 v3.0 P0-a：标的池 ATR14 带宽闸门（百分数口径，如 8.49 = 8.49%）。
+
+    低于下限 → 低波动标的，5-12% 止损会被噪音扫掉且走不到目标（实测 6 笔全灭）；
+    高于上限 → 止损过宽、分档名义被压到过小，风险回报不可控。
+    """
+    A = D(atr_pct)
+    lo, hi = D(band[0]), D(band[1])
+    if A <= 0:
+        raise ValueError('Require atr_pct>0.')
+    ok = lo <= A <= hi
+    return dict(atr_pct=float(A), band_min=float(lo), band_max=float(hi), ok=bool(ok),
+                message=('ok' if ok else
+                         f'REJECT: ATR14 {float(A):.2f}% 不在 [{float(lo):.1f}%, {float(hi):.1f}%] 带宽内'
+                         '（规则 v3.0 P0-a）；低波动标的改走趋势/定投模板，高波动标的等波动收敛'))
+
+
+def check_stop_atr_pct(entry, stop, atr_pct, min_ratio=STOP_MIN_ATR_RATIO,
+                       max_stop_pct=STOP_MAX_PCT, side='long'):
+    """规则 v3.0 P0-b：止损距离必须 >= min_ratio x ATR14，且 <= max_stop_pct。
+
+    与 check_stop_atr 的区别：本函数用 **ATR 百分数** 与 **止损百分比距离** 比较，
+    无需把 ATR 换算成价格，适用于只带了 atr_pct 的计划。
+    """
+    E, S, A = D(entry), D(stop), D(atr_pct)
+    if E <= 0 or A <= 0:
+        raise ValueError('Require entry>0 and atr_pct>0.')
+    dist_pct = abs(E - S) / E * D('100')
+    ratio = dist_pct / A
+    ok = ratio >= D(min_ratio) and dist_pct <= D(max_stop_pct)
+    if ok:
+        msg = 'ok'
+    elif ratio < D(min_ratio):
+        msg = (f'REJECT: 止损距离 {float(dist_pct):.2f}% = {float(ratio):.2f}xATR '
+               f'(< {float(min_ratio):.2f}xATR)，会被噪音扫损；放宽止损并按 1.2xATR 重算仓位')
+    else:
+        msg = (f'REJECT: 止损距离 {float(dist_pct):.2f}% > {float(max_stop_pct):.0f}% 上限，'
+               '风险过大；收敛入场或放弃该笔')
+    return dict(stop_distance_pct=float(dist_pct), atr_pct=float(A), stop_atr_ratio=float(ratio),
+                min_ratio=float(min_ratio), max_stop_pct=float(max_stop_pct), ok=bool(ok),
+                message=msg)
 
 
 def main():
