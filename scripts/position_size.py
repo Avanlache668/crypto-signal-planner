@@ -193,6 +193,52 @@ def check_stop_atr_pct(entry, stop, atr_pct, min_ratio=STOP_MIN_ATR_RATIO,
                 message=msg)
 
 
+
+def exit_plan(entry, stop, atr=None, side='long', partial_pct=D('0.5'),
+              trail_atr=D('0.75'), highest=None, units=None):
+    """规则 v3.0 P1（2026-10-18）：+1R 减半 → 止损移成本 → 余仓 0.75xATR 吊灯跟踪。
+
+    台账依据（25 笔已平仓）：9 笔曾触 +1R，其中 4 笔最终被打回止损（AAVE/COMP/ICP/SOL），
+    按本规则这 4 笔从 -1.00R 改善到约 0R（静态回放 +3.0R）。同时 5 个赢家的 MFE 为
+    +22%~+182%，固定 T1 只吃到 14%~80% 的行情，故余仓不设固定天花板。
+    """
+    E, S = D(entry), D(stop)
+    short = str(side).lower() == 'short'
+    pp, tm = D(partial_pct), D(trail_atr)
+    if E <= 0 or S <= 0:
+        raise ValueError('Require entry>0 and stop>0.')
+    if not (0 < pp <= D('1')):
+        raise ValueError('partial_pct must be (0,1].')
+    if tm <= 0:
+        raise ValueError('trail_atr must be >0.')
+    risk = (S - E) if short else (E - S)
+    if risk <= 0:
+        raise ValueError('stop must be on the losing side of entry.')
+    if atr is not None and D(atr) <= 0:
+        raise ValueError('atr must be >0 when provided.')
+    one_r = (E - risk) if short else (E + risk)
+    out = dict(side=('short' if short else 'long'), entry=float(E), stop=float(S),
+               risk_per_unit=float(risk), one_r_price=float(one_r),
+               partial_pct=float(pp), move_stop_to=float(E),
+               trail_mult=float(tm),
+               rule='+1R 平 partial_pct，剩余止损移到 entry；余仓按 highest -/+ trail_mult x ATR 跟踪，且不得劣于 entry')
+    if units is not None:
+        U = D(units)
+        out['partial_units'] = float((U * pp).to_integral_value())
+        out['remaining_units'] = float(U - (U * pp).to_integral_value())
+    if atr is not None:
+        A = D(atr)
+        out['trail_distance'] = float(tm * A)
+        if highest is not None:
+            H = D(highest)
+            raw = (H + tm * A) if short else (H - tm * A)
+            eff = max(raw, E) if not short else min(raw, E)
+            out['highest'] = float(H)
+            out['trail_stop_now'] = float(eff)
+            out['trail_active'] = True
+    return out
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     for name in ('equity', 'entry', 'stop', 'target'):
@@ -210,11 +256,15 @@ def main():
     for name, default in (('risk-pct','0.005'), ('allocation-pct','0.05'), ('fee-pct','0.001'),
                           ('slippage-pct','0.001'), ('qty-step','0.00000001')):
         p.add_argument('--'+name, default=Decimal(default), type=Decimal)
+    p.add_argument('--exit-plan', action='store_true',
+                   help='规则v3.0 P1：附加 +1R 减半 / 止损移成本 / 0.75xATR 跟踪 的出场参数（需 --atr）')
     a = p.parse_args()
     result = calculate(a.equity, a.entry, a.stop, a.target, a.risk_pct, a.allocation_pct,
                        a.fee_pct, a.slippage_pct, a.qty_step, atr=a.atr, side=a.side,
                        atr_pct=a.atr_pct, atr_cap_mode=a.atr_cap_mode,
                        atr_tier_equity=a.atr_tier_equity)
+    if a.exit_plan and a.atr is not None:
+        result['exit_plan'] = exit_plan(a.entry, a.stop, a.atr, side=a.side, units=result['units'])
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
 
